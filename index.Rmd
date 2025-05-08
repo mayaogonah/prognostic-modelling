@@ -15,7 +15,7 @@ knitr::opts_chunk$set(eval = FALSE)
 ```
 
 
-**Description:** This file includes R code for the development and internal validation of a survival prognostic model which seeks to predict the risk of violent victimisation following adolescent TBI. This document is a shortened version of the original R code, aimed at illustrating key steps in the model development and internal validation. It has also been edited in line with SAIL Databank's output review policy.
+**Description:** This file includes R code for the development and internal validation of a CHECK survival prognostic model which seeks to predict the risk of violent victimisation following adolescent TBI. This document is a shortened version of the original R code, aimed at illustrating key steps in the model development and internal validation. It has also been edited in line with SAIL Databank's output review policy.
 
 I want to acknowledge the use of code developed by Daniele Giardiello and colleagues, available [on Github](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.md), for prognostic model development and internal validation, and code from Plana-Ripoll and colleagues, [available here](https://plana-ripoll.github.io/NB-COMO/), was used to inform data cleaning for the time-to-event analysis.
 
