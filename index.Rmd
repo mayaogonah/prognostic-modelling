@@ -15,7 +15,7 @@ knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE, eval = F
 ```
 
  
-**Description:** For this project, I developed a clinical prediction tool to estimate the risk of two adverse outcomes, violent victimisation and self-harm, following adolescent traumatic brain injury (TBI). In this document, the R code used to develop the prediction model for estimating risk of violent victimisation post-TBI is provided. It outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
+**Description:** For this project, I developed clinical prediction models to estimate the risk of violent victimisation and self-harm following adolescent traumatic brain injury (TBI). In this document, the R code for one model is provided: the risk of violent victimisation following TBI. It outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
 &nbsp;&nbsp;&nbsp;&nbsp;1. Data cleaning, preparation and testing model assumptions.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;2. Building the prediction model.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;3. Testing the model's predictive performance.<br>
@@ -76,7 +76,7 @@ palette("Okabe-Ito") # colour-blind friendly
 
 Here I have loaded the linked dataset I created in DB2 (using SQL), before starting data cleaning.
 
-```{r}
+```{r, echo=FALSE}
 #load(file = "cohort_unclean.RData")
 
 # streamline data and rename columns for ease of interpretation
@@ -197,7 +197,7 @@ data$victim_dd <- decimal_date(data$victimisation_date) # create decimal date fo
 
 Create a table with all victimisation events.
 
-```{r}
+```{r, echo=FALSE}
 temp <- data
 
 # create a table with all victimisation dates
@@ -281,17 +281,20 @@ temp <- temp %>%
 
 Outcome events within 7 days of the index TBI were excluded in order to account for the acute post-injury phase, and reduce risk of reverse causation. Individuals with outcome events within the first 7 days of follow-up remained at risk, and subsequent victimisation events (after the removed incidence) were included.
 
+```{r, echo=FALSE}
+# add the next victimisation event during follow-up
+test <- temp %>%
+  filter(is.na(victimisation_date) & !is.na(second_victimisation_date)) %>%
+  dplyr::select(alf, dod, entry_date, end_date, tbi_date, tbi_life, victimisation_date, second_victimisation_date)
+```
+
+
 ```{r}
 # add the next victimisation event during follow-up
 temp <- temp %>%
   mutate(victimisation_date = if_else(
     (between(as.numeric(difftime(victimisation_date, tbi_date, units = "days")), 0, 7)), NA, as.Date(victimisation_date))
   )
-
-# add the next victimisation event during follow-up
-test <- temp %>%
-  filter(is.na(victimisation_date) & !is.na(second_victimisation_date)) %>%
-  dplyr::select(alf, dod, entry_date, end_date, tbi_date, tbi_life, victimisation_date, second_victimisation_date)
 
 temp <- temp %>%
   mutate(victimisation_date = case_when(is.na(victimisation_date) & (as.numeric(difftime(second_victimisation_date, tbi_date, units = "days")) > 7) ~ as.Date(second_victimisation_date), TRUE ~ victimisation_date))
@@ -355,7 +358,7 @@ temp2 <-temp2 %>%
 
 Here I removed unnecessary columns before saving the dataset as `tbi_prognosis`.
 
-```{r}
+```{r, echo=FALSE}
 temp3 <- temp2 %>%
   dplyr::select(-suicidality_life, -suicidality_date, -victimisation_life, -victimisation_date, sud_life, -sud_date, -psychiatric_life, -psychiatric_date, -adhd_life, -adhd_date, -autism_life, -autism_date, -conduct_disorder_life, -conduct_disorder_date, -learning_difficulties_life, -learning_difficulties_date, -neurological_life, -neurological_date, -child_maltreatment_flag, -looked_after_life, -looked_after_date)
 
