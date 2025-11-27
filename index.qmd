@@ -1,34 +1,36 @@
 ---
-title: "**Assessing the performance of a prediction model for adverse outcomes in adolescent TBI patients: R code**"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    toc_depth: 2
-    number_sections: false
-    theme: lumen
-    highlight: tango
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE, eval = FALSE)
-```
-
- 
-**Description:** For this project, I developed clinical prediction models to estimate the risk of violent victimisation and self-harm following adolescent traumatic brain injury (TBI). In this document, the R code for one model is provided: the risk of violent victimisation following TBI. It outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
+title: "Predicting Adverse Outcomes in Adolescent TBI Patients: R code"
+subtitle: "For this project, I developed clinical prediction models to estimate the risk of violent victimisation and self-harm following adolescent traumatic brain injury (TBI). In this document, the R code for one model is provided: the risk of violent victimisation following TBI. It outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
 &nbsp;&nbsp;&nbsp;&nbsp;1. Data cleaning, preparation and testing model assumptions.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;2. Building the prediction model.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;3. Testing the model's predictive performance.<br>
 
 I want to acknowledge the use of code developed by Daniele Giardiello and colleagues (available [on Github](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.md)) which informed the development and internal validation of the prediction model. Additionally, code from Plana-Ripoll and colleagues ([available here](https://plana-ripoll.github.io/NB-COMO/)) was used guide data cleaning and preparation for the time-to-event analysis.
+"
 
-------------------------------------------------------------------------
+format:
+  lumo-html: 
+    #logo:  #optional: add your logo to the doc header
+    primary-color: "#b5cef7"
+    github-repo: "https://github.com/mayaogonah" 
+    self-contained: true
+    is-particlejs-enabled: true  # optional: display interactive particles in the doc header
+    #bg-image:  # optional: add a background image
+    code-fold: show
 
-# **Data preparation and testing assumptions** {.tabset}
+execute:
+  eval: false
+  echo: true
+author: Maya Ogonah, University of Oxford
+date: today
+    
+---
+
+# Data preparation and testing assumptions {.tabset}
 
 ## Libraries and data
 
-### **Load necessary libraries**
+### Load necessary libraries
 
 ```{r, r run_this_one3, eval = TRUE, waring = FALSE, message = FALSE, results='hide'}
 if (!require("pacman")) install.packages("pacman")
@@ -72,7 +74,7 @@ options(show.signif.stars = FALSE) # display statistical intelligence
 palette("Okabe-Ito") # colour-blind friendly
 ``` 
 
-### **Data and recoding**
+### Data and recoding
 
 Here I have loaded the linked dataset I created in DB2 (using SQL), before starting data cleaning.
 
@@ -134,7 +136,7 @@ data$agebaseline <- cut(data$age_at_entry,
                   right = FALSE)
 ```
 
-### **Left truncation**
+### Left truncation
 
 For every individual follow-up started on the date of first TBI (index TBI).
 
@@ -148,7 +150,7 @@ data$age_at_entry <- data$entry_dd - data$wob_dd # create age at entry (decimal 
 
 ```
 
-### **Right censoring**
+### Right censoring
 
 For every person, follow-up ends on October 16 2023 (the last date of available data), end of GP registration, or death, whichever occurs first.
 
@@ -160,22 +162,22 @@ data$exit_dd <- decimal_date(data$exit) # create decimal date for date of exit
 data$age_at_exit <- data$exit_dd - data$wob_dd # create age of exit (decimal date)
 ```
 
-### **Removing those with negative or zero follow-up**
+### Removing those with negative or zero follow-up
 
 Individuals with exactly zero follow-up time were removed due to the computational constraints of the tmerge package, which requires time at risk to be over zero.
 
-<div class="alert alert-info">
-  <strong>Note:</strong> This exclusion criteria was made on the basis that the individuals with zero follow-up time (n = 10) comprised a negligible fraction of the cohort.<br>
+:::{.callout}
+This exclusion criteria was made on the basis that the individuals with zero follow-up time (n = 10) comprised a negligible fraction of the cohort.<br>
   
-  Albeit, if I were to repeat these analyses, rather than removing individuals with zero time at risk, I would add follow-up time (eg, from 0.0000 to 0.0001) in order to work around the tmerge() technological constraints
-</div>
+  Albeit, if I were to repeat these analyses, rather than removing individuals with zero time at risk, I would add follow-up time (eg, from 0.0000 to 0.0001) in order to work around the tmerge() technological constraints.
+:::
 
 ```{r}
 data <- data[data$entry_dd < data$exit_dd, ]
 ```
 
 
-### **Set outcome of interest**
+### Set outcome of interest
 
 Information on the outcome of interest is included at this stage. Variable `victimisation_date` contains the date of a diagnosis (defined using ICD-10 or Read Codes) of an injury purposely inflicted by another. Follow-up now needs to finish on the date of victimisation, for those with this outcome.
 
@@ -189,11 +191,11 @@ data$age_at_exit <- data$exit_dd - data$wob_dd # create age of exit
 data$victim_dd <- decimal_date(data$victimisation_date) # create decimal date for date of victimisation
 ```
 
-### **Break ties**
+### Break ties
 
-<div class="alert alert-info">
-  <strong>Note:</strong> In hindsight, this stage is unnecessary, as the washout period would remove these 'ties'
-</div>
+:::{.callout}
+In hindsight, this stage is unnecessary, as the washout period would remove these 'ties'.
+:::
 
 Create a table with all victimisation events.
 
@@ -277,7 +279,7 @@ temp <- temp %>%
   )
 ```
 
-### **Washout period**
+### Washout period
 
 Outcome events within 7 days of the index TBI were excluded in order to account for the acute post-injury phase, and reduce risk of reverse causation. Individuals with outcome events within the first 7 days of follow-up remained at risk, and subsequent victimisation events (after the removed incidence) were included.
 
@@ -318,7 +320,7 @@ temp$exit_dd <- decimal_date(temp$exit_date) # create decimal date for date of e
 temp$age_at_exit <- temp$exit_dd - temp$wob_dd
 ```
 
-### **Create a fail variable**
+### Create a fail variable
 
 A variable `fail` was created to indicate the type of outcome at the end of follow-up. 0 = censored (they exit on the last date of the study period 16 Oct 2023); 1 = event; 80 = study exit wasn’t October 16 2023 (eg, emigration, end of GP coverage); 90 = death; 91 = death & diagnosis on the same day
 
@@ -337,7 +339,7 @@ temp <- temp %>%
 table(temp$outcome)
 ```
 
-### **Prepare for time-to-event analysis**
+### Prepare for time-to-event analysis
 
 I created new variables: s_day, id, tstart, tstop, endpoint, and time. The tmerge() function, a time-based merge for time-to-event analysis, was used.
 
@@ -354,7 +356,7 @@ temp2 <-temp2 %>%
   mutate(time = tstop - tstart)
 ```
 
-### **Finalise dataset and streamline to only include predictors**
+### Finalise dataset and streamline to only include predictors
 
 Here I removed unnecessary columns before saving the dataset as `tbi_prognosis`.
 
@@ -368,7 +370,7 @@ temp3 <- temp3 %>%
 tbi_prognosis <- temp3
 ```
 
-### **Check missing data**
+### Check missing data
 
 Check the proportion of missingness for each candidate predictor / risk factor. 
 
@@ -386,7 +388,7 @@ tbi_prognosis <- tbi_prognosis %>%
   filter(!is.na(deprivation))
 ```
 
-### **Apply administrative censoring**
+### Apply administrative censoring
 
 As I was interested in risk up to three years after the index TBI, administrative censoring was applied at 3 years; that is, the maximum follow-up time was set to 3 years.
 
@@ -452,9 +454,12 @@ datatable(fakedata,
 )
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
+
 ## Descriptive statistics
 
-### **Create censoring and survival curves**
+### Create censoring and survival curves
 
 I first drew the survival and censoring curves in the development dataset.
 
@@ -524,7 +529,7 @@ summary(tbi_prognosis$follow_up)
 ```
 
 
-### **Summarising predictors**
+### Summarising predictors
 
 I then summarised the binary variables in the dataset using the modelsummary package. 
 
@@ -562,9 +567,12 @@ table(prognosis3$agebaseline)
 round(prop.table(table(prognosis3$agebaseline))*100,0)
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
+
 ## Assessing model assumptions
 
-### **Assess non-linearity**
+### Assess non-linearity
 
 The assumption of linearity for continuous variables was assessed using restricted cubic splines.
 
@@ -601,7 +609,7 @@ AIC(cox_baseline5)
 BIC(cox_baseline5)
 ```
 
-### **Assess proportional hazards**
+### Assess proportional hazards
 
 The assumption of proportional hazards was assessed through log(-log) plots
 
@@ -664,6 +672,9 @@ p2
 ## combined_plot <- cowplot::plot_grid(p1, p2, ..., ncol = 3)
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
+
 ## Sample size calculation
 
 The minimum sample size was calculated using pmsampsize package. This package calculates the minimum sample size required for the development of a prognostic model using the criteria proposed by [Riley *et al*. (2018).](https://onlinelibrary.wiley.com/doi/full/10.1002/sim.7992)
@@ -680,7 +691,10 @@ pmsampsize(type = "s", # type s as time to event outcome
 )
 ```
 
-# **Model development** {.tabset}
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
+
+# Model development {.tabset}
 
 ## Cox proportional hazards model
 
@@ -813,8 +827,10 @@ observed_events <- sum(prognosis3$endpoint == 1)
 cat("Number of Observed Events: ", observed_events, "\n")
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
 
-# **Performance assessment** {.tabset}
+# Performance assessment {.tabset}
 
 The performance of the risk prediction model may be evaluated through (1) discrimination, (2) calibration, and (3) overall performance. Internal validation using bootstrapping optimism corrected cross validation was conducted using the function [‘internal_cv’](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Functions/internal_cv.R) created by Daniele Giardiello.
 
@@ -822,11 +838,11 @@ The performance of the risk prediction model may be evaluated through (1) discri
 
 Discrimination is the ability to differentiate between patients who have the outcome (by a certain timepoint) and those who don't. Concordance can be assessed over several time windows: (a) a fixed window corresponding to the chosen time horizon, or (b) the entire range of data. 
 
-<div class="alert alert-info">
-  <strong>Note:</strong> For Harrell’s c-index, Uno’s c-index, and Uno’s AUC, values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability
-</div>
+:::{.callout}
+For Harrell’s c-index, Uno’s c-index, and Uno’s AUC, values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.
+:::
 
-### **Fixed timepoint: 1 year**
+### Fixed timepoint: 1 year
 
 Calculate **Uno’s time-dependent AUC** and 95% CIs to calculate discrimination at 1 year post TBI.
 
@@ -913,7 +929,7 @@ kable(res_C) |>
 ```
 
 
-### **Fixed timepoint: 3 years**
+### Fixed timepoint: 3 years
 
 Calculate **Uno’s time-dependent AUC** and 95% CIs to calculate discrimination at 3 years post TBI.
 
@@ -999,7 +1015,7 @@ kable(res_C) |>
 ```
 
 
-### **Time range**
+### Time range
 
 Then calculate **Harrell’s c-index** and 95% CIs. This calculates the degree of concordance across the entire range of data.
 
@@ -1087,16 +1103,18 @@ kable(res_C) |>
   kable_styling("striped", position = "center")
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
 
 ## Calibration
 
-### **Fixed timepoint: 1 year**
+### Fixed timepoint: 1 year
 
 **Moderate calibration** in the development sample was calculated by plotting the observed event rates against the predicted risks.
 
-<div class="alert alert-info">
-  <strong>Note:</strong> The 45 degree line indicates overall good calibration. Points below the 45 degree line indicate that the model overestimates the observed risk, whereas points above the 45 degree line indicate that the model underestimates the observed risk.
-</div>
+:::{.callout}
+The 45 degree line indicates overall good calibration. Points below the 45 degree line indicate that the model overestimates the observed risk, whereas points above the 45 degree line indicate that the model underestimates the observed risk.
+:::
 
 ```{r}
 prognosis3$pred <- riskRegression::predictRisk(full_model,
@@ -1170,7 +1188,7 @@ legend("bottomright",
 title("Apparent moderate calibration at 1y")
 ```
 
-### **Fixed timepoint: 3 years**
+### Fixed timepoint: 3 years
 
 **Moderate calibration** in the development sample at 3 y was also calculated.
 
@@ -1248,14 +1266,15 @@ title("Apparent moderate calibration at 3y")
 ```
 
 
-### **Time range**
+### Time range
 
 Calibration across the full range of data was calculated using the approach proposed by [Crowson *et al.*](https://journals.sagepub.com/doi/10.1177/0962280213497434) (which utilises Poisson regression).
 
 **Mean calibration** (or calibration-in-the-large) observes whether the observed outcome rate is equal to the average predicted risk.
 
-<div class="alert alert-info">
-  <strong>Note:</strong> If the mean calibration is close to 1 with a narrow CI, this indicates robust calibration. <br> A calibration slope < 1 indicates overestimated risks, while > 1 suggests underestimated risk. </div>
+:::{.callout}
+If the mean calibration is close to 1 with a narrow CI, this indicates robust calibration. <br> A calibration slope < 1 indicates overestimated risks, while > 1 suggests underestimated risk.
+:::
   
 ```{r}
 p <- predict(full_model, newdata = prognosis3, type = "expected")
@@ -1330,14 +1349,18 @@ kable(res_weak_cal) |>
   kable_styling("striped", position = "center")
 ```
 
+::: {.cell .page-columns .page-full .column-screen .grey-section}
+:::
+
 ## Overall performance
 
 The **Brier score** and the **Scaled Brier score** were used to assess overall model performance at 1 and 3 years post TBI.
 
-<div class="alert alert-info">
-  <strong>Note:</strong> The lower the brier score the better the model's overall performance. <br> A higher percentage for the scaled Brier score illustrates better model performance: 100% reflecting a perfect model, =0 a useless model, and <0 a harmful model. </div>
+:::{.callout}
+The lower the brier score the better the model's overall performance. <br> A higher percentage for the scaled Brier score illustrates better model performance: 100% reflecting a perfect model, =0 a useless model, and <0 a harmful model.
+:::
 
-### **Fixed timepoint: 1 year**
+### Fixed timepoint: 1 year
 
 ```{r}
 # brier score
@@ -1409,7 +1432,7 @@ kable(res_ov) |>
   kable_styling("striped", position = "center")
 ```
 
-### **Fixed timepoint: 3 years**
+### Fixed timepoint: 3 years
 
 ```{r}
 # brier score
