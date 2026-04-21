@@ -1,6 +1,6 @@
 ---
-title: "Predicting Adverse Outcomes in Adolescent TBI Patients: R code"
-subtitle: "For this project, I developed clinical prediction models to estimate the risk of violent victimisation and self-harm following adolescent traumatic brain injury (TBI). In this document, the R code for one model is provided: the risk of violent victimisation following TBI. It outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
+title: "Predicting Self-Harm in Adolescent TBI Patients: R code"
+subtitle: "For this project, I developed clinical prediction models to estimate the risk of self-harm following adolescent traumatic brain injury (TBI). This document outlines the key steps in the model development and internal validation, and has been prepared in accordance with [SAIL Databank's](https://saildatabank.com) output review policy. This document is addresses three goals:<br> 
 &nbsp;&nbsp;&nbsp;&nbsp;1. Data cleaning, preparation and testing model assumptions.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;2. Building the prediction model.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;3. Testing the model's predictive performance.<br>
@@ -179,16 +179,16 @@ data <- data[data$entry_dd < data$exit_dd, ]
 
 ### Set outcome of interest
 
-Information on the outcome of interest is included at this stage. Variable `victimisation_date` contains the date of a diagnosis (defined using ICD-10 or Read Codes) of an injury purposely inflicted by another. Follow-up now needs to finish on the date of victimisation, for those with this outcome.
+Information on the outcome of interest is included at this stage. Variable `suicidality_date` contains the date of a diagnosis (defined using ICD-10 or Read Codes) of an injury purposely inflicted by another. Follow-up now needs to finish on the date of self-harm, for those with this outcome.
 
 ```{r}
-outcome <- "victimisation_date"
+outcome <- "suicidality_date"
 
-data$exit_date <- pmin(data$exit_date, data$victimisation_date, na.rm = TRUE)
+data$exit_date <- pmin(data$exit_date, data$suicidality_date, na.rm = TRUE)
 data$exit_dd <- decimal_date(data$exit_date) # create decimal date for date of exit
 data$age_at_exit <- data$exit_dd - data$wob_dd # create age of exit 
 
-data$victim_dd <- decimal_date(data$victimisation_date) # create decimal date for date of victimisation
+data$victim_dd <- decimal_date(data$suicidality_date) # create decimal date for date of suicidality
 ```
 
 ### Break ties
@@ -197,12 +197,12 @@ data$victim_dd <- decimal_date(data$victimisation_date) # create decimal date fo
 In hindsight, this stage is unnecessary, as the washout period would remove these 'ties'.
 :::
 
-Create a table with all victimisation events.
+Create a table with all self-harm events.
 
 ```{r, echo=FALSE}
 temp <- data
 
-# create a table with all victimisation dates
+# create a table with all suicidality dates
 pedw <- sqlQuery(channel, "select * from SAILW1478V.PEDW_VICTIM")
 wlgp <- sqlQuery(channel, "select * from SAILW1478V.WLGP_VICTIM")
 adde <- sqlQuery(channel, "select * from SAILW1478V.ADDE_VICTIM")
@@ -254,68 +254,68 @@ Identify and break ties.
 # identify ties
 ties <- temp %>%
   filter(exit_dd - entry_dd == 0.000) %>%
-  dplyr::select(alf, start_date, end_date, tbi_date, victimisation_date, entry_date, exit_date)
+  dplyr::select(alf, start_date, end_date, tbi_date, suicidality_date, entry_date, exit_date)
 
 ties_joined <- ties %>%
   left_join(final_table_long, by = "alf")
 
 ties_joined <- ties_joined %>%
-  filter(event_date > victimisation_date & event_date <= end_date)
+  filter(event_date > suicidality_date & event_date <= end_date)
 
 ties_joined <- ties_joined %>%
   dplyr::group_by(alf) %>%
-  dplyr::summarize(second_victimisation_date = min(event_date, na.rm = TRUE)) %>%
+  dplyr::summarize(second_suicidality_date = min(event_date, na.rm = TRUE)) %>%
   dplyr::ungroup()
 
-# add the second victimisation date to the temp table
+# add the second suicidality date to the temp table
 temp <- temp %>%
   left_join(ties_joined, by = "alf")
 
 # to break ties exclude outcome event, however, individuals remain at-risk during follow-up
 temp <- temp %>%
-  mutate(victimisation_date = case_when(
-    victimisation_date > entry_date ~ as.Date(victimisation_date),
-    victimisation_date <= entry_date ~ NA)
+  mutate(suicidality_date = case_when(
+    suicidality_date > entry_date ~ as.Date(suicidality_date),
+    suicidality_date <= entry_date ~ NA)
   )
 ```
 
 ### Washout period
 
-Outcome events within 7 days of the index TBI were excluded in order to account for the acute post-injury phase, and reduce risk of reverse causation. Individuals with outcome events within the first 7 days of follow-up remained at risk, and subsequent victimisation events (after the removed incidence) were included.
+Outcome events within 7 days of the index TBI were excluded in order to account for the acute post-injury phase, and reduce risk of reverse causation. Individuals with outcome events within the first 7 days of follow-up remained at risk, and subsequent self-harm events (after the removed incidence) were included.
 
 ```{r, echo=FALSE}
-# add the next victimisation event during follow-up
+# add the next suicidality event during follow-up
 test <- temp %>%
-  filter(is.na(victimisation_date) & !is.na(second_victimisation_date)) %>%
-  dplyr::select(alf, dod, entry_date, end_date, tbi_date, tbi_life, victimisation_date, second_victimisation_date)
+  filter(is.na(suicidality_date) & !is.na(second_suicidality_date)) %>%
+  dplyr::select(alf, dod, entry_date, end_date, tbi_date, tbi_life, suicidality_date, second_suicidality_date)
 ```
 
 
 ```{r}
-# add the next victimisation event during follow-up
+# add the next suicidality event during follow-up
 temp <- temp %>%
-  mutate(victimisation_date = if_else(
-    (between(as.numeric(difftime(victimisation_date, tbi_date, units = "days")), 0, 7)), NA, as.Date(victimisation_date))
+  mutate(suicidality_date = if_else(
+    (between(as.numeric(difftime(suicidality_date, tbi_date, units = "days")), 0, 7)), NA, as.Date(suicidality_date))
   )
 
 temp <- temp %>%
-  mutate(victimisation_date = case_when(is.na(victimisation_date) & (as.numeric(difftime(second_victimisation_date, tbi_date, units = "days")) > 7) ~ as.Date(second_victimisation_date), TRUE ~ victimisation_date))
+  mutate(suicidality_date = case_when(is.na(suicidality_date) & (as.numeric(difftime(second_suicidality_date, tbi_date, units = "days")) > 7) ~ as.Date(second_suicidality_date), TRUE ~ suicidality_date))
 
-# update victimisation flag 
+# update suicidality flag 
 temp <- temp %>%
-  mutate(victimisation_life = case_when(
-    is.na(victimisation_date) ~ 0,
-    !is.na(victimisation_date) ~1
+  mutate(suicidality_life = case_when(
+    is.na(suicidality_date) ~ 0,
+    !is.na(suicidality_date) ~1
   ))
 
 temp <- temp %>%
-  mutate(victim_dd = decimal_date(data$victimisation_date))
+  mutate(victim_dd = decimal_date(data$suicidality_date))
 
 # update exit date
 temp <- temp %>%
   mutate(exit_date = coalesce(end_date, dod, last_date))
 temp <- temp %>%
-  mutate(exit_date = coalesce(victimisation_date, exit_date))
+  mutate(exit_date = coalesce(suicidality_date, exit_date))
 temp$exit_dd <- decimal_date(temp$exit_date) # create decimal date for date of exit
 temp$age_at_exit <- temp$exit_dd - temp$wob_dd
 ```
@@ -328,8 +328,8 @@ An outcome column was created, where when fail = 1 \| 91, outcome = 1.
 
 ```{r}
 temp$fail <- (90 * (!is.na(temp$dod) & (temp$dod == temp$exit_date))) + 
-  (80 * (!is.na(temp$exit_date) & (temp$exit_date != temp$last_date) & is.na(temp$dod) & is.na(temp$victimisation_date))) +
-  (01 * (!is.na(temp$victimisation_date) & (temp$victimisation_date <= temp$exit_date)))
+  (80 * (!is.na(temp$exit_date) & (temp$exit_date != temp$last_date) & is.na(temp$dod) & is.na(temp$suicidality_date))) +
+  (01 * (!is.na(temp$suicidality_date) & (temp$suicidality_date <= temp$exit_date)))
 
 table(temp$fail)
 
@@ -362,7 +362,7 @@ Here I removed unnecessary columns before saving the dataset as `tbi_prognosis`.
 
 ```{r, echo=FALSE}
 temp3 <- temp2 %>%
-  dplyr::select(-suicidality_life, -suicidality_date, -victimisation_life, -victimisation_date, sud_life, -sud_date, -psychiatric_life, -psychiatric_date, -adhd_life, -adhd_date, -autism_life, -autism_date, -conduct_disorder_life, -conduct_disorder_date, -learning_difficulties_life, -learning_difficulties_date, -neurological_life, -neurological_date, -child_maltreatment_flag, -looked_after_life, -looked_after_date)
+  dplyr::select(-suicidality_life, -suicidality_date, -suicidality_life, -suicidality_date, sud_life, -sud_date, -psychiatric_life, -psychiatric_date, -adhd_life, -adhd_date, -autism_life, -autism_date, -conduct_disorder_life, -conduct_disorder_date, -learning_difficulties_life, -learning_difficulties_date, -neurological_life, -neurological_date, -child_maltreatment_flag, -looked_after_life, -looked_after_date)
 
 temp3 <- temp3 %>%
   mutate(pretbi_neurodevelopmental = ifelse(pretbi_autism == 1 | pretbi_adhd == 1, 1, 0 ))
@@ -435,7 +435,7 @@ fakedata <- tibble(
   exit_date = as.Date("2022-09-11"), 
   exit_dd = 2022.693, 
   age_at_exit = 16.444, 
-  victimisation_date = as.Date("2022-09-11"), 
+  suicidality_date = as.Date("2022-09-11"), 
   fail = 1,
   outcome = 1,
   s_day = 0,
@@ -536,7 +536,7 @@ I then summarised the binary variables in the dataset using the modelsummary pac
 ```{r}
 tbi_descriptive <- prognosis3 %>%
   mutate(sex = ifelse(sex == 0, 'female', 'male'),
-         'history of victimisation' = ifelse(pretbi_victimisation == 1, 'yes', 'no'),
+         'history of suicidality' = ifelse(pretbi_suicidality == 1, 'yes', 'no'),
          'history of self-harm' = ifelse(pretbi_suicidality == 1, 'yes', 'no'),
          'conduct disorder' = ifelse(pretbi_conduct_disorder == 1, 'yes', 'no'),
          'neurodevelopmental disorder' = ifelse(pretbi_neurodevelopmental == 1, 'yes', 'no'),
@@ -545,7 +545,7 @@ tbi_descriptive <- prognosis3 %>%
          'neurological condition' = ifelse(pretbi_neurological == 1, 'yes', 'no'),
          'substance misuse' = ifelse(pretbi_sud == 1, 'yes', 'no'))%>%
   dplyr::select(sex,
-                'history of victimisation',
+                'history of suicidality',
                 'history of self-harm',
                 'conduct disorder', 
                 'neurodevelopmental disorder', 
@@ -699,7 +699,7 @@ pmsampsize(type = "s", # type s as time to event outcome
 ## Cox proportional hazards model
 
 ```{r}
-full_model <- coxph(Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_victimisation + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary, data = prognosis3, x = T, y = T)
+full_model <- coxph(Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_suicidality + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary, data = prognosis3, x = T, y = T)
 
 full_model
 ```
@@ -895,7 +895,7 @@ int_val <- bootstrap_cv(db = prognosis3,
                         B = 100, 
                         time = "time", 
                         status = "endpoint", 
-                        formula_model = "Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_victimisation + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary",
+                        formula_model = "Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_suicidality + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary",
                         formula_ipcw = "Surv(time, endpoint) ~ 1",
                         pred.time = 0.99)
 ```
@@ -982,7 +982,7 @@ int_val3 <- bootstrap_cv(db = prognosis3,
                         B = 100, 
                         time = "time", 
                         status = "endpoint", 
-                        formula_model = "Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_victimisation + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary",
+                        formula_model = "Surv(time, endpoint) ~ sex + rcs(age_at_entry, 3) + deprivation + pretbi_suicidality + pretbi_suicidality + pretbi_conduct_disorder + pretbi_neurodevelopmental + pretbi_learning_difficulties + pretbi_psychiatric + pretbi_neurological + pretbi_sud + tbi_severity_binary",
                         formula_ipcw = "Surv(time, endpoint) ~ 1",
                         pred.time = 2.99)
 ```
