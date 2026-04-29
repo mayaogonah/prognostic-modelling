@@ -1,2 +1,5 @@
+# Violent victimisation after adolescent traumatic brain injury: development and validation of a clinical prediction model
 
-This repository includes a HTML file (https://mayaogonah.github.io/prognostic-modelling/) created with Quarto, which details the code used to develop and internally validate a survival prognostic model to predict the risk of violent victimisation following adolescent TBI. Findings are under review.
+R/Quarto repository for the manuscript 'Violent victimisation after adolescent traumatic brain injury: development and validation of a clinical prediction model' which is currently under peer review.
+
+The reposity contains the code to develop and internally validate a survival prognostic model to predict the risk of violent victimisation following adolescent TBI. [The HTML file](https://mayaogonah.github.io/prognostic-modelling/) rendered from Quarto, outlines the key stages of analysis. 
