@@ -2,7 +2,7 @@
 
 R/Quarto repository for the manuscript 'Violent victimisation after adolescent traumatic brain injury: development and validation of a clinical prediction model' published in Injury Prevention.
 
-**Journal article is available [here](https://injuryprevention.bmj.com/content/early/2026/06/25/ip-2025-046072)**
+**Journal article is available [here](https://injuryprevention.bmj.com/content/early/2026/06/25/ip-2025-046072).**
 
 The reposity contains the code to develop and internally validate a survival prognostic model to predict the risk of violent victimisation following adolescent traumatic brain injury. [The HTML file](https://mayaogonah.github.io/prognostic-modelling/) rendered from Quarto, outlines the key stages of analysis. 
 
